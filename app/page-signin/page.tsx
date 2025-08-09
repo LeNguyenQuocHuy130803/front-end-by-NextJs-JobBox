@@ -1,9 +1,59 @@
-/* eslint-disable react/no-unescaped-entities */
-/* eslint-disable @next/next/no-img-element */
+"use client"
 import Layout from "@/components/Layout/Layout";
 import Link from "next/link";
+import { useForm } from "react-hook-form";
+import { yupResolver } from "@hookform/resolvers/yup";
+import * as yup from "yup";
+import React, { useState } from "react";
+import { useAuthStore } from "@/stores/useAuthorStore";
+import { toast } from "react-toastify";
+import { useRouter } from "next/navigation";
+
+const schema = yup.object().shape({
+  username: yup.string().required("Username or Email is required"),
+  password: yup.string().required("Password is required"),
+});
 
 export default function Signin() {
+  const [loginError, setLoginError] = useState("");
+  const {
+    register,
+    handleSubmit,
+    formState: { errors },
+  } = useForm({
+    resolver: yupResolver(schema),
+  });
+  const router = useRouter();
+  const onSubmit = async (data: any) => {
+    setLoginError("");
+    try {
+      const res = await fetch("http://localhost:8080/api/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          username: data.username,
+          password: data.password,
+        }),
+      });
+      if (res.ok) {
+        const result = await res.json();
+        useAuthStore.getState().setAuth(result.username, result.accessToken);
+        toast.success("Đăng nhập thành công!");
+        setTimeout(() => {
+          router.push("/");
+        }, 1200);
+      } else {
+        toast.error("Đăng nhập thất bại!");
+        setLoginError("Login failed!");
+      }
+    } catch (err: any) {
+      toast.error("Login error!");
+      setLoginError("Login error!");
+    }
+  };
+
+
+
   return (
     <>
       <Layout>
@@ -15,7 +65,7 @@ export default function Signin() {
                   <p className="font-sm text-brand-2">Welcome back! </p>
                   <h2 className="mt-10 mb-5 text-brand-1">Member Login</h2>
                   <p className="font-sm text-muted mb-30">Access to all features. No credit card required.</p>
-                  <button className="btn social-login hover-up mb-20">
+                  <button className="btn social-login hover-up mb-20" type="button">
                     <img src="assets/imgs/template/icons/icon-google.svg" alt="jobbox" />
                     <strong>Sign in with Google</strong>
                   </button>
@@ -23,23 +73,42 @@ export default function Signin() {
                     <span>Or continue with</span>
                   </div>
                 </div>
-                <form className="login-register text-start mt-20" action="#">
+                <form className="login-register text-start mt-20" onSubmit={handleSubmit(onSubmit)}>
+                  {loginError && <div className="alert alert-danger">{loginError}</div>}
                   <div className="form-group">
                     <label className="form-label" htmlFor="input-1">
                       Username or Email address *
                     </label>
-                    <input className="form-control" id="input-1" type="text" required name="fullname" placeholder="Steven Job" />
+                    <input
+                      className="form-control"
+                      id="input-1"
+                      type="text"
+                      {...register("username")}
+                      placeholder="Steven Job"
+                    />
+                    {errors.username && (
+                      <span className="text-danger font-xs">{errors.username.message as string}</span>
+                    )}
                   </div>
                   <div className="form-group">
                     <label className="form-label" htmlFor="input-4">
                       Password *
                     </label>
-                    <input className="form-control" id="input-4" type="password" required name="password" placeholder="************" />
+                    <input
+                      className="form-control"
+                      id="input-4"
+                      type="password"
+                      {...register("password")}
+                      placeholder="************"
+                    />
+                    {errors.password && (
+                      <span className="text-danger font-xs">{errors.password.message as string}</span>
+                    )}
                   </div>
                   <div className="login_footer form-group d-flex justify-content-between">
                     <label className="cb-container">
                       <input type="checkbox" />
-                      <span className="text-small">Remenber me</span>
+                      <span className="text-small">Remember me</span>
                       <span className="checkmark" />
                     </label>
                     <Link href="/page-contact">
